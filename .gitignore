@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+# Deploy-only material stays local: it names internal hosts and endpoints.
+.local-test/
+worker/
+scripts/
+DEPLOY.md
+.access-code

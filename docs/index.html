@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Messaging Agent Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --surface-primary: #FFFEFA;
+    --surface-secondary: #F7F6F0;
+    --surface-brand: #008F6D;
+    --surface-brand-tint: #E4F2ED;
+    --text-primary: #1A3C36;
+    --text-secondary: #4D6763;
+    --text-brand: #008F6D;
+    --text-invert: #FFFEFA;
+    --border: #B3BEBC;
+    --error: #C45C6E;
+    --font-display: 'ITC Garamond Narrow', Georgia, 'Times New Roman', serif;
+    --font-body: 'Fellix', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  /* Several elements below set their own `display` (flex, etc.), which at
+     equal CSS specificity beats the browser's default `[hidden]{display:none}`
+     rule since author styles outrank the user-agent stylesheet. Without this,
+     toggling .hidden in JS stops actually hiding anything. */
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--surface-secondary);
+    color: var(--text-primary);
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  header {
+    padding: 20px 24px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--surface-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header .title h1 {
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 24px;
+    color: var(--text-primary);
+  }
+  header .title p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  header button.back {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 16px;
+    background: transparent;
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  header button.back:hover { border-color: var(--surface-brand); color: var(--text-brand); }
+  main {
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .card {
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .card:hover {
+    border-color: var(--surface-brand);
+    box-shadow: 0 2px 8px rgba(0,38,32,0.08);
+  }
+  .card .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .card .name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .card .meta {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--surface-brand-tint);
+    color: var(--text-brand);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .unlock-box {
+    max-width: 360px;
+    margin: 80px auto;
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+  }
+  .unlock-box h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 22px;
+    margin: 0 0 20px;
+    color: var(--text-primary);
+  }
+  input[type="password"], input[type="text"] {
+    width: 100%;
+    padding: 11px 12px;
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  input[type="password"]:focus, input[type="text"]:focus {
+    outline: none;
+    border-color: var(--surface-brand);
+  }
+  button.primary {
+    width: 100%;
+    height: 44px;
+    padding: 0 18px;
+    background: var(--surface-brand);
+    border: none;
+    border-radius: 8px;
+    color: var(--text-invert);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  button.primary:hover { opacity: 0.88; }
+  button.primary:disabled { opacity: 0.5; cursor: default; }
+  button.secondary {
+    padding: 0 16px;
+    height: 38px;
+    background: transparent;
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button.secondary:hover { border-color: var(--surface-brand); color: var(--text-brand); }
+  button.secondary:disabled { opacity: 0.5; cursor: default; }
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .status {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .status.error { color: var(--error); }
+  .item {
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    background: var(--surface-primary);
+  }
+  .item .meta {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .item.message.user { background: var(--surface-secondary); }
+  .item.message.assistant { background: var(--surface-brand-tint); }
+  .item.tool {
+    background: var(--surface-secondary);
+    border-left: 3px solid var(--surface-brand);
+  }
+  .item pre {
+    margin: 6px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgba(26,60,54,0.05);
+    padding: 8px;
+    border-radius: 6px;
+  }
+  .item .content {
+    font-size: 14px;
+    white-space: pre-wrap;
+    color: var(--text-primary);
+  }
+  .pagination-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .page-tab {
+    min-width: 34px;
+    height: 30px;
+    padding: 0 8px;
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .page-tab:hover { border-color: var(--surface-brand); }
+  .page-tab:disabled { opacity: 0.4; cursor: default; }
+  .page-tab:disabled:hover { border-color: var(--border); }
+  .page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 2px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .page-tab.active {
+    background: var(--surface-brand);
+    border-color: var(--surface-brand);
+    color: var(--text-invert);
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,60,54,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 10;
+  }
+  .modal {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .modal h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    margin: 0 0 16px;
+    color: var(--text-primary);
+  }
+  .modal .option-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .modal .date-range {
+    display: flex;
+    gap: 10px;
+    margin: 4px 0 14px 24px;
+  }
+  .modal .date-range label {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .modal input[type="date"] {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .modal-actions button.secondary, .modal-actions button.primary {
+    flex: 1;
+    width: auto;
+  }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters button.active { background: var(--surface-brand); border-color: var(--surface-brand); color: var(--text-invert); }
+  .badge.muted { background: var(--surface-secondary); color: var(--text-secondary); }
+  .badge.error { background: #F6E3E6; color: var(--error); }
+  .card .preview {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .thread { display: flex; flex-direction: column; gap: 8px; }
+  .bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 0.5px solid var(--border);
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .bubble .meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .bubble.customer { align-self: flex-start; background: var(--surface-primary); border-bottom-left-radius: 4px; }
+  .bubble.agent { align-self: flex-end; background: var(--surface-brand-tint); border-bottom-right-radius: 4px; }
+  .bubble.placeholder { align-self: center; background: transparent; border-style: dashed; color: var(--text-secondary); font-size: 12.5px; }
+  .bubble.failed { align-self: center; background: #F6E3E6; border-color: var(--error); color: var(--error); font-size: 12.5px; }
+  details.tool {
+    align-self: stretch;
+    margin: 0 8%;
+    background: var(--surface-secondary);
+    border: 0.5px solid var(--border);
+    border-left: 3px solid var(--surface-brand);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  details.tool.error { border-left-color: var(--error); }
+  details.tool summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+  }
+  details.tool pre {
+    margin: 6px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgba(26,60,54,0.05);
+    padding: 8px;
+    border-radius: 6px;
+  }
+  .stats section { margin-top: 28px; }
+  .stats h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 19px;
+    margin: 0 0 4px;
+  }
+  .stats .note { font-size: 12.5px; color: var(--text-secondary); margin: 4px 0 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi {
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .kpi .value { font-family: var(--font-display); font-size: 30px; line-height: 1.1; margin: 6px 0 2px; }
+  .kpi .sub { font-size: 12px; color: var(--text-secondary); }
+  .chart-box {
+    position: relative;
+    background: var(--surface-primary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 12px 4px;
+  }
+  .chart-box svg { display: block; width: 100%; height: auto; }
+  .chart-box .axis-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-secondary); }
+  .chart-tip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--text-primary);
+    color: var(--text-invert);
+    font-size: 12px;
+    padding: 6px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+  }
+  .hbars { background: var(--surface-primary); border: 0.5px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+  .hbar-row { display: grid; grid-template-columns: minmax(110px, 34%) 1fr auto; gap: 10px; align-items: center; padding: 5px 0; font-size: 13.5px; }
+  .hbar-row .track { height: 14px; }
+  .hbar-row .fill { height: 100%; min-width: 2px; background: var(--surface-brand); border-radius: 0 4px 4px 0; }
+  .hbar-row .fill.zero { background: transparent; }
+  .hbar-row .num { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); text-align: right; white-space: nowrap; }
+  table.tools { width: 100%; border-collapse: collapse; background: var(--surface-primary); border: 0.5px solid var(--border); border-radius: 8px; font-size: 13.5px; }
+  table.tools th, table.tools td { padding: 9px 12px; text-align: left; border-bottom: 0.5px solid var(--border); }
+  table.tools th { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); font-weight: 600; }
+  table.tools td.n { font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
+  table.tools th.n { text-align: right; }
+  .table-scroll { overflow-x: auto; }
+  #viewTabs { margin-bottom: 12px; }
+  .header-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+  .lang-toggle { display: inline-flex; border: 0.5px solid var(--border); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+  .lang-toggle button {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .lang-toggle button + button { border-left: 0.5px solid var(--border); }
+  .lang-toggle button.active { background: var(--surface-brand); color: var(--text-invert); }
+  .conv-head { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; }
+  @media (max-width: 600px) {
+    main { padding: 16px; }
+    header { padding: 16px; }
+    .bubble { max-width: 92%; }
+    details.tool { margin: 0; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
+      <button data-lang="en">EN</button>
+      <button data-lang="fr">FR</button>
+    </div>
+    <div class="title">
+      <h1 data-i18n="appTitle">Messaging Agent Viewer</h1>
+      <p id="headerSubtitle">Browse an AI messaging agent's conversations and inspect each thread.</p>
+    </div>
+  </div>
+  <button class="back" id="backBtn" data-i18n="back" hidden>&larr; Back</button>
+</header>
+<main>
+  <div id="unlockScreen" class="unlock-box">
+    <h1 data-i18n="enterCode">Enter access code</h1>
+    <input type="password" id="accessCode" data-i18n-placeholder="codePlaceholder" placeholder="Access code" autocomplete="off" />
+    <button class="primary" id="unlockBtn" data-i18n="unlock">Unlock</button>
+    <div id="unlockStatus" class="status"></div>
+  </div>
+
+  <div id="appScreen" hidden>
+    <div id="viewTabs" class="filters" hidden>
+      <button class="secondary active" data-tab="conversations" data-i18n="tabConversations">Conversations</button>
+      <button class="secondary" data-tab="stats" data-i18n="tabStats">Stats</button>
+    </div>
+    <div class="toolbar">
+      <div id="filters" class="filters" hidden>
+        <button class="secondary" data-range="1" data-i18n="range1">24h</button>
+        <button class="secondary" data-range="7" data-i18n="range7">7d</button>
+        <button class="secondary active" data-range="30" data-i18n="range30">30d</button>
+        <button class="secondary" data-range="all" data-i18n="rangeAll">All</button>
+      </div>
+      <button class="secondary" id="exportBtn" hidden>Export conversations</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="content"></div>
+    <div id="paginationTabs" class="pagination-tabs" hidden></div>
+  </div>
+</main>
+
+<div id="exportModal" class="modal-overlay" hidden>
+  <div class="modal">
+    <h2 data-i18n="exportTitle">Export conversations</h2>
+    <label class="option-row">
+      <input type="radio" name="exportRange" id="exportRangeAll" value="all" checked />
+      <span data-i18n="allTime">All time</span>
+    </label>
+    <label class="option-row">
+      <input type="radio" name="exportRange" id="exportRangeCustom" value="custom" />
+      <span data-i18n="customRange">Custom date range</span>
+    </label>
+    <div id="exportDateRange" class="date-range" hidden>
+      <div>
+        <label for="exportStart" data-i18n="from">From</label>
+        <input type="date" id="exportStart" />
+      </div>
+      <div>
+        <label for="exportEnd" data-i18n="to">To</label>
+        <input type="date" id="exportEnd" />
+      </div>
+    </div>
+    <div id="exportModalStatus" class="status"></div>
+    <div class="modal-actions">
+      <button class="secondary" id="exportCancelBtn" data-i18n="cancel">Cancel</button>
+      <button class="primary" id="exportConfirmBtn" data-i18n="exportAction">Export</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Fill this in after deploying the Cloudflare Worker (wrangler deploy prints the URL).
+  const WORKER_URL = "https://aima-conversation-viewer-d9c8e7.b00784180.workers.dev";
+
+  const TURN_CONCURRENCY = 4;
+  const EXPORT_CONCURRENCY = 3;
+  // Safety cap so an "All time" export on a busy agent can't run forever —
+  // if hit, the export still downloads what it found and says so.
+  const MAX_EXPORT_CONVERSATIONS = 500;
+
+  // ---------- language ----------
+  // Every visible string goes through t(). Add a language by adding a block
+  // here and a button in #langToggle.
+  const STRINGS = {
+    en: {
+      appTitle: "Messaging Agent Viewer",
+      intro: "Browse an AI messaging agent's conversations and inspect each thread.",
+      back: "\u2190 Back",
+      enterCode: "Enter access code",
+      codePlaceholder: "Access code",
+      unlock: "Unlock",
+      checking: "Checking...",
+      invalidCode: "Invalid access code",
+      errUnauthorized: "Invalid access code.",
+      errScope: "This item is not available with this access code.",
+      errNotFound: "Not found.",
+      errGeneric: "Something went wrong loading this data. Try again in a minute.",
+      errNetwork: "Network error. Check your connection and try again.",
+      tabConversations: "Conversations",
+      tabStats: "Stats",
+      range1: "24h", range7: "7d", range30: "30d", rangeAll: "All",
+      exportConversations: "Export conversations",
+      exportTitle: "Export conversations",
+      allTime: "All time",
+      customRange: "Custom date range",
+      from: "From", to: "To",
+      cancel: "Cancel",
+      exportAction: "Export",
+      loadingAgents: "Loading agents...",
+      selectAgent: "Select an agent.",
+      noAgents: "No messaging agents found.",
+      active: "Active", inactive: "Inactive",
+      updated: (d) => `Updated ${d}`,
+      unknown: "unknown",
+      convHeader: (a) => `${a} \u2014 conversations`,
+      loadingConversations: "Loading conversations...",
+      noConvPeriod: "No conversations in this period.",
+      errorsBadge: (n) => `${n} error${n > 1 ? "s" : ""}`,
+      turnsBadge: (n) => `${n} turn${n === 1 ? "" : "s"}`,
+      lastActivity: (d) => `last activity ${d}`,
+      threadHeader: (a) => `${a} \u2014 conversation`,
+      loadingConversation: "Loading conversation...",
+      loadingMessageFrom: (d) => `Loading message from ${d}...`,
+      turnFailed: (e) => `Could not load this turn: ${e}`,
+      loadedTurns: (a, b, f) => `Loaded ${a}/${b} turns${f ? ` (${f} failed)` : ""}.`,
+      agentEarlier: "Agent (earlier message)",
+      customer: "Customer",
+      agent: "Agent",
+      agentNoReply: (e) => `Agent did not reply: ${e}`,
+      noContent: "no message content recorded for this turn",
+      toolCall: "Tool call",
+      statusSuccess: "success", statusError: "error",
+      argumentsLabel: "Arguments:",
+      resultLabel: "Result:",
+      none: "(none)",
+      clipped: (n) => `... (${n} more characters; use Export to get the full result)`,
+      fallback: {
+        intake_question: "Asked an intake question instead",
+        insufficient_context: "Not enough info to answer",
+        unsupported_request: "Request not supported",
+        escalation: "Escalated to a person",
+      },
+      answeredDirectly: "Answered directly",
+      noReplySent: "No reply sent",
+      statsHeader: (a) => `${a} \u2014 stats`,
+      loadingStats: "Loading stats...",
+      loadingStatsN: (n) => `Loading stats... ${n} conversations so far.`,
+      periodAll: "all time",
+      period1: "the last 24 hours",
+      periodDays: (n) => `the last ${n} days`,
+      kpiConversations: "Conversations",
+      kpiMessages: "Customer messages",
+      perConversation: (x) => `${x} per conversation`,
+      kpiWithError: "With an error",
+      xOfYConversations: (x, y) => `${x} of ${y} conversations`,
+      xOfY: (x, y) => `${x} of ${y}`,
+      noDataYet: "no data yet",
+      outcomesTitle: "Outcomes",
+      outcomesNote: (period, judged, ingested) => `AI-judged by Aircall over ${period}${ingested ? `, based on ${judged} of ${ingested} conversations reviewed` : ""}. Treat these as estimates, not exact counts.`,
+      kpiGoal: "Goal completed",
+      kpiAutonomous: "Resolved without a person",
+      kpiEscalated: "Escalated",
+      kpiUnresolved: "Unresolved or interrupted",
+      dailyTitle: "Conversations per day",
+      dailyNote: "By each conversation's last activity.",
+      dailyAria: "Conversations per day",
+      dailyTip: (d, n) => `${d}: ${n} conversation${n === 1 ? "" : "s"}`,
+      noData: "No data.",
+      scanTitle: "Outcomes pushed and tool calls",
+      scanNote: "Reads each customer message in this period to count which tools the agent used, the outcome values it recorded, and how often it could not answer directly.",
+      analyzeN: (n) => `Analyze ${n} messages`,
+      analyzing: (a, b) => `Analyzing ${a}/${b}...`,
+      analyzeAgain: "Analyze again",
+      cappedStats: (n) => `Showing the most recent ${n} conversations.`,
+      scanBasedOn: (a, b, cap, f) => `Based on ${a} of ${b} customer messages${cap ? ` (capped at ${cap}; pick a shorter period for full coverage)` : ""}${f ? `, ${f} could not be read` : ""}.`,
+      notSet: "(not set)",
+      otherValue: "(other value)",
+      noOutcomeTools: "None of the tools this agent used in this period record a fixed outcome value.",
+      howReplied: "How the agent replied",
+      toolCallsTitle: "Tool calls",
+      colTool: "Tool", colCalls: "Calls", colSucceeded: "Succeeded", colConversations: "Conversations",
+      noToolCalls: "No tool calls in this period.",
+      pickBothDates: "Pick both a start and end date.",
+      startBeforeEnd: "Start date must be before end date.",
+      scanning: "Scanning...",
+      scanningN: (n) => `Scanning... ${n} conversations found so far.`,
+      noConvRange: "No conversations found in that range.",
+      exportingStatus: (a, b, f) => `Exporting conversations... ${a}/${b}${f ? ` (${f} failed)` : ""}`,
+      exportingBtn: (a, b) => `Exporting ${a}/${b}...`,
+      exportCap: (n) => ` Stopped at the ${n}-conversation cap; narrow the date range to get the rest.`,
+      exported: (a, b, f) => `Exported ${a}/${b} conversations${f ? ` (${f} incomplete)` : ""}.`,
+    },
+    fr: {
+      appTitle: "Visionneuse de l'agent de messagerie",
+      intro: "Parcourez les conversations d'un agent IA de messagerie et consultez chaque \u00e9change.",
+      back: "\u2190 Retour",
+      enterCode: "Saisissez le code d'acc\u00e8s",
+      codePlaceholder: "Code d'acc\u00e8s",
+      unlock: "D\u00e9verrouiller",
+      checking: "V\u00e9rification...",
+      invalidCode: "Code d'acc\u00e8s invalide",
+      errUnauthorized: "Code d'acc\u00e8s invalide.",
+      errScope: "Cet \u00e9l\u00e9ment n'est pas accessible avec ce code.",
+      errNotFound: "Introuvable.",
+      errGeneric: "Un probl\u00e8me est survenu lors du chargement. R\u00e9essayez dans une minute.",
+      errNetwork: "Erreur r\u00e9seau. V\u00e9rifiez votre connexion et r\u00e9essayez.",
+      tabConversations: "Conversations",
+      tabStats: "Statistiques",
+      range1: "24 h", range7: "7 j", range30: "30 j", rangeAll: "Tout",
+      exportConversations: "Exporter les conversations",
+      exportTitle: "Exporter les conversations",
+      allTime: "Toute la p\u00e9riode",
+      customRange: "P\u00e9riode personnalis\u00e9e",
+      from: "Du", to: "Au",
+      cancel: "Annuler",
+      exportAction: "Exporter",
+      loadingAgents: "Chargement des agents...",
+      selectAgent: "S\u00e9lectionnez un agent.",
+      noAgents: "Aucun agent de messagerie trouv\u00e9.",
+      active: "Actif", inactive: "Inactif",
+      updated: (d) => `Mis \u00e0 jour le ${d}`,
+      unknown: "inconnu",
+      convHeader: (a) => `${a} \u2014 conversations`,
+      loadingConversations: "Chargement des conversations...",
+      noConvPeriod: "Aucune conversation sur cette p\u00e9riode.",
+      errorsBadge: (n) => `${n} erreur${n > 1 ? "s" : ""}`,
+      turnsBadge: (n) => `${n} \u00e9change${n > 1 ? "s" : ""}`,
+      lastActivity: (d) => `derni\u00e8re activit\u00e9 ${d}`,
+      threadHeader: (a) => `${a} \u2014 conversation`,
+      loadingConversation: "Chargement de la conversation...",
+      loadingMessageFrom: (d) => `Chargement du message du ${d}...`,
+      turnFailed: (e) => `Impossible de charger cet \u00e9change : ${e}`,
+      loadedTurns: (a, b, f) => `${a}/${b} \u00e9changes charg\u00e9s${f ? ` (${f} en \u00e9chec)` : ""}.`,
+      agentEarlier: "Agent (message pr\u00e9c\u00e9dent)",
+      customer: "Client",
+      agent: "Agent",
+      agentNoReply: (e) => `L'agent n'a pas r\u00e9pondu : ${e}`,
+      noContent: "aucun contenu de message enregistr\u00e9 pour cet \u00e9change",
+      toolCall: "Appel d'outil",
+      statusSuccess: "r\u00e9ussi", statusError: "erreur",
+      argumentsLabel: "Param\u00e8tres :",
+      resultLabel: "R\u00e9sultat :",
+      none: "(aucun)",
+      clipped: (n) => `... (${n} caract\u00e8res de plus ; utilisez l'export pour obtenir le r\u00e9sultat complet)`,
+      fallback: {
+        intake_question: "A pos\u00e9 une question de qualification",
+        insufficient_context: "Pas assez d'informations pour r\u00e9pondre",
+        unsupported_request: "Demande non prise en charge",
+        escalation: "Transf\u00e9r\u00e9 \u00e0 un conseiller",
+      },
+      answeredDirectly: "R\u00e9ponse directe",
+      noReplySent: "Aucune r\u00e9ponse envoy\u00e9e",
+      statsHeader: (a) => `${a} \u2014 statistiques`,
+      loadingStats: "Chargement des statistiques...",
+      loadingStatsN: (n) => `Chargement des statistiques... ${n} conversations pour l'instant.`,
+      periodAll: "toute la p\u00e9riode",
+      period1: "les derni\u00e8res 24 heures",
+      periodDays: (n) => `les ${n} derniers jours`,
+      kpiConversations: "Conversations",
+      kpiMessages: "Messages clients",
+      perConversation: (x) => `${x} par conversation`,
+      kpiWithError: "Avec une erreur",
+      xOfYConversations: (x, y) => `${x} sur ${y} conversations`,
+      xOfY: (x, y) => `${x} sur ${y}`,
+      noDataYet: "pas encore de donn\u00e9es",
+      outcomesTitle: "R\u00e9sultats",
+      outcomesNote: (period, judged, ingested) => `\u00c9valu\u00e9 par l'IA d'Aircall sur ${period}${ingested ? `, d'apr\u00e8s ${judged} conversations analys\u00e9es sur ${ingested}` : ""}. Ce sont des estimations, pas des d\u00e9comptes exacts.`,
+      kpiGoal: "Objectif atteint",
+      kpiAutonomous: "R\u00e9solu sans intervention humaine",
+      kpiEscalated: "Transf\u00e9r\u00e9",
+      kpiUnresolved: "Non r\u00e9solu ou interrompu",
+      dailyTitle: "Conversations par jour",
+      dailyNote: "Selon la derni\u00e8re activit\u00e9 de chaque conversation.",
+      dailyAria: "Conversations par jour",
+      dailyTip: (d, n) => `${d} : ${n} conversation${n > 1 ? "s" : ""}`,
+      noData: "Aucune donn\u00e9e.",
+      scanTitle: "R\u00e9sultats enregistr\u00e9s et appels d'outils",
+      scanNote: "Analyse chaque message client de la p\u00e9riode pour compter les outils utilis\u00e9s par l'agent, les r\u00e9sultats qu'il a enregistr\u00e9s et la fr\u00e9quence \u00e0 laquelle il n'a pas pu r\u00e9pondre directement.",
+      analyzeN: (n) => `Analyser ${n} messages`,
+      analyzing: (a, b) => `Analyse ${a}/${b}...`,
+      analyzeAgain: "Relancer l'analyse",
+      cappedStats: (n) => `Affichage des ${n} conversations les plus r\u00e9centes.`,
+      scanBasedOn: (a, b, cap, f) => `D'apr\u00e8s ${a} messages clients sur ${b}${cap ? ` (limit\u00e9 \u00e0 ${cap} ; choisissez une p\u00e9riode plus courte pour tout couvrir)` : ""}${f ? `, ${f} illisibles` : ""}.`,
+      notSet: "(non renseign\u00e9)",
+      otherValue: "(autre valeur)",
+      noOutcomeTools: "Aucun des outils utilis\u00e9s par cet agent sur cette p\u00e9riode n'enregistre de r\u00e9sultat \u00e0 valeur fixe.",
+      howReplied: "Comment l'agent a r\u00e9pondu",
+      toolCallsTitle: "Appels d'outils",
+      colTool: "Outil", colCalls: "Appels", colSucceeded: "R\u00e9ussis", colConversations: "Conversations",
+      noToolCalls: "Aucun appel d'outil sur cette p\u00e9riode.",
+      pickBothDates: "Choisissez une date de d\u00e9but et une date de fin.",
+      startBeforeEnd: "La date de d\u00e9but doit pr\u00e9c\u00e9der la date de fin.",
+      scanning: "Recherche...",
+      scanningN: (n) => `Recherche... ${n} conversations trouv\u00e9es pour l'instant.`,
+      noConvRange: "Aucune conversation sur cette p\u00e9riode.",
+      exportingStatus: (a, b, f) => `Export des conversations... ${a}/${b}${f ? ` (${f} en \u00e9chec)` : ""}`,
+      exportingBtn: (a, b) => `Export ${a}/${b}...`,
+      exportCap: (n) => ` Arr\u00eat\u00e9 \u00e0 la limite de ${n} conversations ; r\u00e9duisez la p\u00e9riode pour obtenir le reste.`,
+      exported: (a, b, f) => `${a}/${b} conversations export\u00e9es${f ? ` (${f} incompl\u00e8tes)` : ""}.`,
+    },
+  };
+  const LOCALES = { en: "en-GB", fr: "fr-FR" };
+
+  let lang = "en";
+  try {
+    const saved = localStorage.getItem("viewerLang");
+    if (saved && STRINGS[saved]) lang = saved;
+    else if ((navigator.language || "").toLowerCase().startsWith("fr")) lang = "fr";
+  } catch {}
+
+  function t(key, ...args) {
+    const v = STRINGS[lang][key] ?? STRINGS.en[key];
+    return typeof v === "function" ? v(...args) : v;
+  }
+
+  // Re-runs whatever is on screen so dynamic text picks up the new language.
+  let rerender = null;
+
+  function applyStaticStrings() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+    document.querySelectorAll("#langToggle button").forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
+    document.title = t("appTitle");
+  }
+
+  function setLang(next) {
+    if (next === lang || !STRINGS[next]) return;
+    lang = next;
+    try { localStorage.setItem("viewerLang", lang); } catch {}
+    applyStaticStrings();
+    if (!appScreen.hidden && rerender) rerender();
+    else if (!unlockScreen.hidden) headerSubtitle.textContent = t("intro");
+  }
+
+  let accessCode = "";
+  let selectedAgent = null; // { id, name }
+  let rangeDays = "30";
+  // pageCursors[i] is the cursor that fetches page i+1 (page 1 needs none).
+  let pageCursors = [null];
+  let currentPageNum = 1;
+  let lastHasMore = false;
+  let viewToken = 0; // bumps on every navigation so stale async renders are dropped
+  let currentTab = "conversations";
+
+  const $ = (id) => document.getElementById(id);
+  const unlockScreen = $("unlockScreen"), appScreen = $("appScreen");
+  const accessCodeInput = $("accessCode"), unlockBtn = $("unlockBtn"), unlockStatus = $("unlockStatus");
+  const backBtn = $("backBtn"), exportBtn = $("exportBtn"), filtersEl = $("filters"), viewTabsEl = $("viewTabs");
+  const statusEl = $("status"), contentEl = $("content"), paginationTabsEl = $("paginationTabs");
+  const headerSubtitle = $("headerSubtitle");
+  const exportModal = $("exportModal"), exportRangeAll = $("exportRangeAll"), exportRangeCustom = $("exportRangeCustom");
+  const exportDateRange = $("exportDateRange"), exportStart = $("exportStart"), exportEnd = $("exportEnd");
+  const exportModalStatus = $("exportModalStatus"), exportCancelBtn = $("exportCancelBtn"), exportConfirmBtn = $("exportConfirmBtn");
+
+  document.querySelectorAll("#langToggle button").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang)));
+  applyStaticStrings();
+  headerSubtitle.textContent = t("intro");
+
+  unlockBtn.addEventListener("click", unlock);
+  accessCodeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
+  backBtn.addEventListener("click", () => {
+    if (backBtn.dataset.target === "agents") loadAgents();
+    else loadConversationsPage(currentPageNum);
+  });
+  filtersEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    rangeDays = b.dataset.range;
+    filtersEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+    if (currentTab === "stats") loadStats(); else loadConversations(selectedAgent);
+  }));
+  viewTabsEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    currentTab = b.dataset.tab;
+    viewTabsEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+    if (currentTab === "stats") loadStats(); else loadConversations(selectedAgent);
+  }));
+  exportBtn.addEventListener("click", openExportModal);
+  exportCancelBtn.addEventListener("click", () => { exportModal.hidden = true; });
+  exportConfirmBtn.addEventListener("click", confirmExport);
+  exportRangeAll.addEventListener("change", updateExportRangeVisibility);
+  exportRangeCustom.addEventListener("change", updateExportRangeVisibility);
+
+  function updateExportRangeVisibility() { exportDateRange.hidden = !exportRangeCustom.checked; }
+
+  function setStatus(text, isError) {
+    statusEl.textContent = text;
+    statusEl.className = "status" + (isError ? " error" : "");
+  }
+
+  async function apiFetch(params) {
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const resp = await fetch(`${WORKER_URL}?${qs}`, { headers: { "X-Access-Code": accessCode } });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const key = { 401: "errUnauthorized", 403: "errScope", 404: "errNotFound" }[resp.status] || "errGeneric";
+        return { ok: false, error: t(key) };
+      }
+      return { ok: true, data };
+    } catch (err) {
+      return { ok: false, error: t("errNetwork") };
+    }
+  }
+
+  async function unlock() {
+    const code = accessCodeInput.value.trim();
+    if (!code) return;
+    accessCode = code;
+    unlockBtn.disabled = true;
+    unlockStatus.textContent = t("checking");
+    unlockStatus.className = "status";
+    // Any real endpoint doubles as the auth check; agents list is the cheapest.
+    const result = await apiFetch({ view: "agents" });
+    if (!result.ok) {
+      unlockStatus.textContent = result.error || t("invalidCode");
+      unlockStatus.className = "status error";
+      unlockBtn.disabled = false;
+      accessCode = "";
+      return;
+    }
+    unlockScreen.hidden = true;
+    appScreen.hidden = false;
+    renderAgents(result.data.agents);
+  }
+
+  async function loadAgents() {
+    viewToken++;
+    setStatus(t("loadingAgents"), false);
+    contentEl.innerHTML = "";
+    const result = await apiFetch({ view: "agents" });
+    if (!result.ok) { setStatus(result.error, true); return; }
+    renderAgents(result.data.agents);
+  }
+
+  function renderAgents(agents) {
+    selectedAgent = null;
+    rerender = () => renderAgents(agents);
+    viewTabsEl.hidden = true;
+    setTab("conversations");
+    backBtn.hidden = true;
+    exportBtn.hidden = true;
+    filtersEl.hidden = true;
+    paginationTabsEl.hidden = true;
+    headerSubtitle.textContent = t("selectAgent");
+    setStatus(agents.length ? "" : t("noAgents"), false);
+    contentEl.innerHTML = agents.map((a) => `
+      <div class="card" data-agent-id="${escapeHtml(a.id)}" data-agent-name="${escapeHtml(a.name)}">
+        <div class="row">
+          <span class="name">${escapeHtml(a.name)}</span>
+          <span class="badge${a.isActive ? "" : " muted"}">${a.isActive ? t("active") : t("inactive")}</span>
+        </div>
+        <div class="meta">${escapeHtml(t("updated", a.updatedAt ? formatDate(a.updatedAt) : t("unknown")))}</div>
+      </div>
+    `).join("");
+    contentEl.querySelectorAll(".card").forEach((card) => {
+      card.addEventListener("click", () => loadConversations({ id: card.dataset.agentId, name: card.dataset.agentName }));
+    });
+  }
+
+  function rangeParams() {
+    if (rangeDays === "all") return {};
+    return { startedAfter: new Date(Date.now() - Number(rangeDays) * 86400000).toISOString() };
+  }
+
+  function setTab(tab) {
+    currentTab = tab;
+    viewTabsEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.tab === tab));
+  }
+
+  async function loadConversations(agent) {
+    selectedAgent = agent;
+    pageCursors = [null];
+    await loadConversationsPage(1);
+  }
+
+  async function loadConversationsPage(pageNum) {
+    const token = ++viewToken;
+    currentPageNum = pageNum;
+    rerender = () => loadConversationsPage(pageNum);
+    backBtn.hidden = false;
+    backBtn.dataset.target = "agents";
+    filtersEl.hidden = false;
+    viewTabsEl.hidden = false;
+    setTab("conversations");
+    exportBtn.hidden = true;
+    paginationTabsEl.hidden = true;
+    headerSubtitle.textContent = t("convHeader", selectedAgent.name);
+    setStatus(t("loadingConversations"), false);
+    contentEl.innerHTML = "";
+
+    const params = { view: "conversations", agentId: selectedAgent.id, ...rangeParams() };
+    const cursor = pageCursors[pageNum - 1];
+    if (cursor) params.after = cursor;
+    const result = await apiFetch(params);
+    if (token !== viewToken) return;
+    if (!result.ok) { setStatus(result.error, true); return; }
+
+    const { conversations, hasMore, nextCursor } = result.data;
+    lastHasMore = hasMore;
+    if (hasMore && nextCursor && pageCursors.length === pageNum) pageCursors.push(nextCursor);
+    renderConversations(conversations);
+    renderPaginationTabs();
+  }
+
+  function renderPaginationTabs() {
+    const known = pageCursors.length; // pages we can reach directly
+    if (known <= 1 && !lastHasMore) { paginationTabsEl.hidden = true; return; }
+    let html = `<button class="page-tab" id="pagePrev" ${currentPageNum === 1 ? "disabled" : ""}>&lt;</button>`;
+    for (let p = 1; p <= known; p++) {
+      html += `<button class="page-tab${p === currentPageNum ? " active" : ""}" data-page="${p}">${p}</button>`;
+    }
+    html += `<button class="page-tab" id="pageNext" ${currentPageNum < known ? "" : "disabled"}>&gt;</button>`;
+    paginationTabsEl.innerHTML = html;
+    paginationTabsEl.hidden = false;
+    paginationTabsEl.querySelectorAll(".page-tab[data-page]").forEach((btn) => {
+      btn.addEventListener("click", () => loadConversationsPage(parseInt(btn.dataset.page, 10)));
+    });
+    const prevBtn = $("pagePrev"), nextBtn = $("pageNext");
+    if (!prevBtn.disabled) prevBtn.addEventListener("click", () => loadConversationsPage(currentPageNum - 1));
+    if (!nextBtn.disabled) nextBtn.addEventListener("click", () => loadConversationsPage(currentPageNum + 1));
+  }
+
+  function renderConversations(conversations) {
+    exportBtn.hidden = false;
+    exportBtn.disabled = false;
+    exportBtn.textContent = t("exportConversations");
+    setStatus(conversations.length ? "" : t("noConvPeriod"), false);
+    contentEl.innerHTML = conversations.map((c) => `
+      <div class="card" data-conversation-id="${escapeHtml(c.id)}">
+        <div class="row">
+          <span class="name">${escapeHtml(c.phoneNumber || c.id)}</span>
+          <span>
+            ${c.errorCount ? `<span class="badge error">${escapeHtml(t("errorsBadge", c.errorCount))}</span>` : ""}
+            <span class="badge" data-turns="${c.turnCount}">${escapeHtml(t("turnsBadge", c.turnCount))}</span>
+          </span>
+        </div>
+        <div class="meta">${escapeHtml((c.channel || "").toUpperCase())} &middot; ${escapeHtml(t("lastActivity", formatDate(c.lastActivityAt)))}</div>
+        ${c.lastCustomerMessage ? `<div class="preview">${escapeHtml(c.lastCustomerMessage)}</div>` : ""}
+      </div>
+    `).join("");
+    contentEl.querySelectorAll(".card").forEach((card) => {
+      card.addEventListener("click", () => loadThread(card.dataset.conversationId));
+    });
+  }
+
+  // Runs fn over items with a small concurrency limit, preserving order.
+  async function mapLimit(items, limit, fn) {
+    const results = new Array(items.length);
+    let next = 0;
+    async function worker() {
+      while (next < items.length) {
+        const i = next++;
+        results[i] = await fn(items[i], i);
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    return results;
+  }
+
+  async function loadThread(conversationId) {
+    const token = ++viewToken;
+    rerender = () => loadThread(conversationId);
+    backBtn.hidden = false;
+    backBtn.dataset.target = "conversations";
+    filtersEl.hidden = true;
+    viewTabsEl.hidden = true;
+    exportBtn.hidden = true;
+    paginationTabsEl.hidden = true;
+    headerSubtitle.textContent = t("threadHeader", selectedAgent.name);
+    setStatus(t("loadingConversation"), false);
+    contentEl.innerHTML = "";
+
+    const result = await apiFetch({ view: "conversation", conversationId });
+    if (token !== viewToken) return;
+    if (!result.ok) { setStatus(result.error, true); return; }
+    const { conversation, turns } = result.data;
+
+    contentEl.innerHTML = `
+      <div class="conv-head">${escapeHtml(conversation.phoneNumber || conversation.id)} &middot; ${escapeHtml((conversation.channel || "").toUpperCase())} &middot; ${escapeHtml(t("turnsBadge", turns.length))}</div>
+      <div class="thread">${turns.map((turn, i) => `<div id="turn-${i}"><div class="bubble placeholder">${escapeHtml(t("loadingMessageFrom", formatDate(turn.startedAt)))}</div></div>`).join("")}</div>
+    `;
+
+    let loaded = 0, failed = 0;
+    await mapLimit(turns, TURN_CONCURRENCY, async (turn, i) => {
+      const r = await apiFetch(turnParams(conversationId, turn, i));
+      if (token !== viewToken) return;
+      const slot = $(`turn-${i}`);
+      if (r.ok) { slot.innerHTML = renderTurn(r.data.turn); loaded++; }
+      else { slot.innerHTML = `<div class="bubble failed">${escapeHtml(t("turnFailed", r.error))}</div>`; failed++; }
+      setStatus(t("loadedTurns", loaded, turns.length, failed), failed > 0);
+    });
+  }
+
+  // Turn 1 also asks for messages the agent sent before the customer's first
+  // reply (e.g. an outbound template SMS), which have no turn of their own.
+  function turnParams(conversationId, t, index) {
+    const params = { view: "turn", conversationId, requestId: t.requestId };
+    if (index === 0) params.first = "1";
+    return params;
+  }
+
+  function fallbackLabel(reason) {
+    return t("fallback")[reason] || reason.replace(/_/g, " ");
+  }
+
+  function renderTurn(turn) {
+    const time = formatDate(turn.startedAt);
+    let html = "";
+    for (const m of turn.earlierMessages || []) {
+      const when = m.timestamp ? ` &middot; ${escapeHtml(formatDate(m.timestamp))}` : "";
+      html += `<div class="bubble agent"><div class="meta">${escapeHtml(t("agentEarlier"))}${when}</div>${escapeHtml(m.text)}</div>`;
+    }
+    if (turn.customerMessage) {
+      html += `<div class="bubble customer"><div class="meta">${escapeHtml(t("customer"))} &middot; ${escapeHtml(time)}</div>${escapeHtml(turn.customerMessage)}</div>`;
+    }
+    for (const c of turn.toolCalls) html += renderToolCall(c);
+    if (turn.reply) {
+      const tag = turn.fallbackReason ? ` &middot; ${escapeHtml(fallbackLabel(turn.fallbackReason))}` : "";
+      html += `<div class="bubble agent"><div class="meta">${escapeHtml(t("agent"))}${tag}</div>${escapeHtml(turn.reply)}</div>`;
+    } else if (turn.error) {
+      html += `<div class="bubble failed">${escapeHtml(t("agentNoReply", turn.error))}</div>`;
+    } else if (!turn.customerMessage) {
+      html += `<div class="bubble placeholder">${escapeHtml(time)} &middot; ${escapeHtml(t("noContent"))}</div>`;
+    }
+    return `<div class="thread">${html}</div>`;
+  }
+
+  function renderToolCall(c) {
+    const isErr = c.status === "error";
+    return `
+      <details class="tool${isErr ? " error" : ""}">
+        <summary>${escapeHtml(t("toolCall"))}: ${escapeHtml(c.name)} (${escapeHtml(isErr ? t("statusError") : t("statusSuccess"))})${isErr && c.errorReason ? ` &mdash; ${escapeHtml(c.errorReason)}` : ""}</summary>
+        <div>${escapeHtml(t("argumentsLabel"))}</div>
+        <pre>${escapeHtml(prettyPrint(c.arguments))}</pre>
+        <div>${escapeHtml(t("resultLabel"))}</div>
+        <pre>${escapeHtml(clip(prettyPrint(c.result)))}</pre>
+      </details>
+    `;
+  }
+
+  // ---------- stats ----------
+
+  const MAX_STATS_CONVERSATIONS = 1000;
+  const MAX_SCAN_TURNS = 1500;
+  // AI-judged KPIs need a bounded window; "All" means the last 90 days there.
+  const INSIGHTS_ALL_DAYS = 90;
+  let statsConversations = [];
+
+  const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parseTs = (s) => new Date(String(s).replace(" ", "T").replace(/\+00$/, "Z"));
+  const pct = (n, d) => (d ? Math.round((100 * n) / d) : null);
+
+  async function collectConversations(token) {
+    const out = [];
+    let cursor = null;
+    for (;;) {
+      const params = { view: "conversations", agentId: selectedAgent.id, ...rangeParams() };
+      if (cursor) params.after = cursor;
+      const r = await apiFetch(params);
+      if (token !== viewToken) return null;
+      if (!r.ok) throw new Error(r.error);
+      out.push(...r.data.conversations);
+      setStatus(t("loadingStatsN", out.length), false);
+      if (out.length >= MAX_STATS_CONVERSATIONS) return { list: out.slice(0, MAX_STATS_CONVERSATIONS), capped: true };
+      if (!r.data.hasMore || !r.data.nextCursor) return { list: out, capped: false };
+      cursor = r.data.nextCursor;
+    }
+  }
+
+  async function loadStats() {
+    const token = ++viewToken;
+    rerender = loadStats;
+    setTab("stats");
+    viewTabsEl.hidden = false;
+    filtersEl.hidden = false;
+    exportBtn.hidden = true;
+    paginationTabsEl.hidden = true;
+    backBtn.hidden = false;
+    backBtn.dataset.target = "agents";
+    headerSubtitle.textContent = t("statsHeader", selectedAgent.name);
+    setStatus(t("loadingStats"), false);
+    contentEl.innerHTML = "";
+
+    const days = rangeDays === "all" ? INSIGHTS_ALL_DAYS : Number(rangeDays);
+    const end = new Date();
+    const start = new Date(Date.now() - days * 86400000);
+    const insightsP = apiFetch({ view: "insights", agentId: selectedAgent.id, start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) });
+
+    let convs;
+    try { convs = await collectConversations(token); } catch (e) { setStatus(e.message, true); return; }
+    if (!convs) return;
+    const insights = await insightsP;
+    if (token !== viewToken) return;
+    statsConversations = convs.list;
+
+    const list = convs.list;
+    const turns = list.reduce((s, c) => s + (c.turnCount || 0), 0);
+    const withErrors = list.filter((c) => c.errorCount > 0).length;
+    const periodLabel = rangeDays === "all" ? t("periodAll") : rangeDays === "1" ? t("period1") : t("periodDays", rangeDays);
+
+    let html = `<div class="stats">`;
+    html += `<div class="kpis">
+      ${kpi(t("kpiConversations"), list.length + (convs.capped ? "+" : ""), periodLabel)}
+      ${kpi(t("kpiMessages"), turns, list.length ? t("perConversation", (turns / list.length).toLocaleString(LOCALES[lang], { maximumFractionDigits: 1 })) : "")}
+      ${kpi(t("kpiWithError"), list.length ? `${pct(withErrors, list.length)}%` : "–", t("xOfYConversations", withErrors, list.length))}
+    </div>`;
+
+    if (insights.ok) {
+      const i = insights.data;
+      const r = (x) => (x && x.denominator ? `${pct(x.numerator, x.denominator)}%` : "–");
+      const sub = (x) => (x && x.denominator ? t("xOfY", x.numerator, x.denominator) : t("noDataYet"));
+      html += `<section><h3>${escapeHtml(t("outcomesTitle"))}</h3>
+        <p class="note">${escapeHtml(t("outcomesNote", rangeDays === "all" ? t("periodDays", INSIGHTS_ALL_DAYS) : periodLabel, i.judged ?? 0, i.ingested))}</p>
+        <div class="kpis">
+          ${kpi(t("kpiGoal"), r(i.goalCompletion), sub(i.goalCompletion))}
+          ${kpi(t("kpiAutonomous"), r(i.autonomousResolution), sub(i.autonomousResolution))}
+          ${kpi(t("kpiEscalated"), r(i.escalation), sub(i.escalation))}
+          ${kpi(t("kpiUnresolved"), r(i.unresolved), sub(i.unresolved))}
+        </div></section>`;
+    }
+
+    html += `<section><h3>${escapeHtml(t("dailyTitle"))}</h3>
+      <p class="note">${escapeHtml(t("dailyNote"))}</p>
+      <div class="chart-box" id="dailyChart"></div></section>`;
+
+    html += `<section id="scanSection"><h3>${escapeHtml(t("scanTitle"))}</h3>
+      <p class="note">${escapeHtml(t("scanNote"))}</p>
+      <button class="secondary" id="scanBtn" ${turns ? "" : "disabled"}>${escapeHtml(t("analyzeN", Math.min(turns, MAX_SCAN_TURNS)))}</button>
+      <div id="scanResults"></div></section>`;
+    html += `</div>`;
+
+    contentEl.innerHTML = html;
+    setStatus(convs.capped ? t("cappedStats", MAX_STATS_CONVERSATIONS) : "", false);
+    renderDailyChart($("dailyChart"), list, rangeDays === "all" ? null : Number(rangeDays));
+    $("scanBtn").addEventListener("click", () => runScan(token));
+  }
+
+  function kpi(label, value, sub) {
+    return `<div class="kpi"><div class="eyebrow">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div><div class="sub">${escapeHtml(sub || "")}</div></div>`;
+  }
+
+  function renderDailyChart(box, list, days) {
+    const counts = new Map();
+    for (const c of list) {
+      const k = dayKey(parseTs(c.lastActivityAt));
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    let first;
+    if (days) first = new Date(Date.now() - (days - 1) * 86400000);
+    else {
+      const all = list.map((c) => parseTs(c.lastActivityAt)).filter((d) => !isNaN(d));
+      first = all.length ? new Date(Math.min(...all)) : new Date();
+    }
+    first.setHours(0, 0, 0, 0);
+    const buckets = [];
+    for (let d = new Date(first); d <= new Date(); d.setDate(d.getDate() + 1)) {
+      const k = dayKey(d);
+      buckets.push({ key: k, label: d.toLocaleDateString(LOCALES[lang], { month: "short", day: "numeric" }), n: counts.get(k) || 0 });
+    }
+    if (!buckets.length) { box.textContent = t("noData"); return; }
+
+    const W = 800, H = 190, padL = 30, padB = 22, padT = 10;
+    const max = Math.max(1, ...buckets.map((b) => b.n));
+    const slot = (W - padL) / buckets.length;
+    const gap = Math.min(2, slot * 0.2);
+    // Cap bar width so a short period doesn't render as a few slabs.
+    const bw = Math.max(1, Math.min(slot - gap, 28));
+    const y = (n) => padT + (H - padT - padB) * (1 - n / max);
+    const base = H - padB;
+    let bars = "", hits = "";
+    buckets.forEach((b, i) => {
+      const x = padL + i * slot + (slot - bw) / 2;
+      if (b.n > 0) {
+        const top = y(b.n), r = Math.min(4, bw / 2, base - top);
+        bars += `<path d="M${x},${base} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${base} Z" fill="var(--surface-brand)"/>`;
+      }
+      hits += `<rect x="${padL + i * slot}" y="${padT}" width="${slot}" height="${base - padT}" fill="transparent" data-i="${i}"/>`;
+    });
+    const labelIdx = [...new Set([0, Math.floor((buckets.length - 1) / 2), buckets.length - 1])];
+    const xLabels = labelIdx.map((i) => `<text class="axis-label" x="${padL + i * slot + slot / 2}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === buckets.length - 1 ? "end" : "middle"}">${escapeHtml(buckets[i].label)}</text>`).join("");
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(t("dailyAria"))}">
+      <line x1="${padL}" x2="${W}" y1="${base}" y2="${base}" stroke="var(--border)" stroke-width="1"/>
+      <text class="axis-label" x="${padL - 6}" y="${y(max) + 4}" text-anchor="end">${max}</text>
+      <text class="axis-label" x="${padL - 6}" y="${base}" text-anchor="end">0</text>
+      ${bars}${xLabels}${hits}</svg><div class="chart-tip" hidden></div>`;
+
+    const svg = box.querySelector("svg"), tip = box.querySelector(".chart-tip");
+    svg.addEventListener("mousemove", (e) => {
+      const i = e.target.dataset?.i;
+      if (i === undefined) { tip.hidden = true; return; }
+      const b = buckets[i];
+      const rect = svg.getBoundingClientRect(), boxRect = box.getBoundingClientRect();
+      const scale = rect.width / W;
+      tip.textContent = t("dailyTip", b.label, b.n);
+      tip.style.left = `${rect.left - boxRect.left + (padL + (Number(i) + 0.5) * slot) * scale}px`;
+      tip.style.top = `${rect.top - boxRect.top + y(b.n) * scale - 6}px`;
+      tip.hidden = false;
+    });
+    svg.addEventListener("mouseleave", () => { tip.hidden = true; });
+  }
+
+  function displayToolName(traceName, toolsByTrace) {
+    const t = toolsByTrace.get(traceName);
+    return t ? t.title : traceName.replace(/^\d+_\d+_/, "").replace(/_/g, " ");
+  }
+
+  async function runScan(token) {
+    const btn = $("scanBtn"), out = $("scanResults");
+    btn.disabled = true;
+    out.innerHTML = "";
+    const toolsRes = await apiFetch({ view: "tools", agentId: selectedAgent.id });
+    if (token !== viewToken) return;
+    const toolsByTrace = new Map((toolsRes.ok ? toolsRes.data.tools : []).map((tool) => [tool.traceName, tool]));
+
+    const toolStats = new Map(); // traceName -> { calls, ok, err, convs:Set }
+    const enumCounts = new Map(); // traceName -> { arg -> Map(value -> n) }
+    const replyKinds = new Map();
+    let scanned = 0, failed = 0, budget = MAX_SCAN_TURNS;
+    const totalTurns = statsConversations.reduce((s, c) => s + (c.turnCount || 0), 0);
+    const target = Math.min(totalTurns, MAX_SCAN_TURNS);
+    const progress = () => { btn.textContent = t("analyzing", scanned, target); };
+
+    await mapLimit(statsConversations, 3, async (c) => {
+      if (budget <= 0 || token !== viewToken) return;
+      const conv = await apiFetch({ view: "conversation", conversationId: c.id });
+      if (!conv.ok) { failed++; return; }
+      const turns = conv.data.turns.slice(0, Math.max(0, budget));
+      budget -= turns.length;
+      await mapLimit(turns, 2, async (tu) => {
+        const r = await apiFetch({ view: "turn", conversationId: c.id, requestId: tu.requestId, lite: "1" });
+        scanned++;
+        if (token !== viewToken) return;
+        progress();
+        if (!r.ok) { failed++; return; }
+        const turn = r.data.turn;
+        const kind = turn.replied ? (turn.fallbackReason ? `fallback:${turn.fallbackReason}` : "answered") : "noReply";
+        replyKinds.set(kind, (replyKinds.get(kind) || 0) + 1);
+        for (const call of turn.toolCalls) {
+          const st = toolStats.get(call.name) || { calls: 0, ok: 0, err: 0, convs: new Set() };
+          st.calls++; call.status === "error" ? st.err++ : st.ok++; st.convs.add(c.id);
+          toolStats.set(call.name, st);
+          const def = toolsByTrace.get(call.name);
+          if (!def) continue;
+          for (const [arg, values] of Object.entries(def.enums)) {
+            const byArg = enumCounts.get(call.name) || {};
+            const m = byArg[arg] || new Map(values.map((v) => [v, 0]));
+            const v = call.arguments?.[arg];
+            const key = v === undefined || v === null || v === "" ? t("notSet") : values.includes(String(v)) ? String(v) : t("otherValue");
+            m.set(key, (m.get(key) || 0) + 1);
+            byArg[arg] = m;
+            enumCounts.set(call.name, byArg);
+          }
+        }
+      });
+    });
+    if (token !== viewToken) return;
+
+    let html = `<p class="note">${escapeHtml(t("scanBasedOn", scanned - failed, totalTurns, totalTurns > MAX_SCAN_TURNS ? MAX_SCAN_TURNS : 0, failed))}</p>`;
+
+    const enumBlocks = [];
+    for (const [traceName, byArg] of enumCounts) {
+      for (const [arg, m] of Object.entries(byArg)) {
+        const rows = [...m.entries()].sort((a, b) => b[1] - a[1]);
+        enumBlocks.push(`<h4 class="eyebrow" style="margin:18px 0 8px;">${escapeHtml(arg.replace(/_/g, " "))} &middot; ${escapeHtml(displayToolName(traceName, toolsByTrace))}</h4>${hbars(rows.map(([k, n]) => [k.replace(/_/g, " "), n]))}`);
+      }
+    }
+    html += enumBlocks.length
+      ? enumBlocks.join("")
+      : `<p class="note">${escapeHtml(t("noOutcomeTools"))}</p>`;
+
+    const replyLabel = (k) => (k === "answered" ? t("answeredDirectly") : k === "noReply" ? t("noReplySent") : fallbackLabel(k.slice("fallback:".length)));
+    html += `<h4 class="eyebrow" style="margin:22px 0 8px;">${escapeHtml(t("howReplied"))}</h4>`;
+    html += hbars([...replyKinds.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => [replyLabel(k), n]));
+
+    const rows = [...toolStats.entries()].sort((a, b) => b[1].calls - a[1].calls);
+    html += `<h4 class="eyebrow" style="margin:22px 0 8px;">${escapeHtml(t("toolCallsTitle"))}</h4>`;
+    html += rows.length ? `<div class="table-scroll"><table class="tools">
+      <thead><tr><th>${escapeHtml(t("colTool"))}</th><th class="n">${escapeHtml(t("colCalls"))}</th><th class="n">${escapeHtml(t("colSucceeded"))}</th><th class="n">${escapeHtml(t("colConversations"))}</th></tr></thead>
+      <tbody>${rows.map(([name, st]) => `<tr><td>${escapeHtml(displayToolName(name, toolsByTrace))}</td><td class="n">${st.calls}</td><td class="n">${pct(st.ok, st.calls)}%</td><td class="n">${st.convs.size}</td></tr>`).join("")}</tbody>
+    </table></div>` : `<p class="note">${escapeHtml(t("noToolCalls"))}</p>`;
+
+    out.innerHTML = html;
+    btn.textContent = t("analyzeAgain");
+    btn.disabled = false;
+  }
+
+  // Horizontal bars with direct labels; rows = [[label, count], ...].
+  function hbars(rows) {
+    const total = rows.reduce((s, r) => s + r[1], 0);
+    const max = Math.max(1, ...rows.map((r) => r[1]));
+    return `<div class="hbars">${rows.map(([label, n]) => `
+      <div class="hbar-row" title="${escapeHtml(label)}: ${n}">
+        <span>${escapeHtml(label)}</span>
+        <div class="track"><div class="fill${n ? "" : " zero"}" style="width:${(100 * n) / max}%"></div></div>
+        <span class="num">${n}${total ? ` &middot; ${pct(n, total)}%` : ""}</span>
+      </div>`).join("")}</div>`;
+  }
+
+  // ---------- export ----------
+
+  function openExportModal() {
+    exportRangeAll.checked = true;
+    updateExportRangeVisibility();
+    exportStart.value = "";
+    exportEnd.value = "";
+    exportModalStatus.textContent = "";
+    exportModalStatus.className = "status";
+    exportConfirmBtn.disabled = false;
+    exportConfirmBtn.textContent = t("exportAction");
+    exportModal.hidden = false;
+  }
+
+  function exportModalError(text) {
+    exportModalStatus.textContent = text;
+    exportModalStatus.className = "status error";
+    exportConfirmBtn.disabled = false;
+    exportConfirmBtn.textContent = t("exportAction");
+  }
+
+  async function confirmExport() {
+    const allTime = exportRangeAll.checked;
+    const range = {};
+    if (!allTime) {
+      if (!exportStart.value || !exportEnd.value) return exportModalError(t("pickBothDates"));
+      const start = new Date(exportStart.value + "T00:00:00");
+      const end = new Date(exportEnd.value + "T23:59:59.999");
+      if (start > end) return exportModalError(t("startBeforeEnd"));
+      range.startedAfter = start.toISOString();
+      range.startedBefore = end.toISOString();
+    }
+
+    exportConfirmBtn.disabled = true;
+    exportConfirmBtn.textContent = t("scanning");
+    const conversations = [];
+    let cursor = null, limitReached = false;
+    for (;;) {
+      const params = { view: "conversations", agentId: selectedAgent.id, ...range };
+      if (cursor) params.after = cursor;
+      const r = await apiFetch(params);
+      if (!r.ok) return exportModalError(r.error);
+      conversations.push(...r.data.conversations);
+      exportModalStatus.textContent = t("scanningN", conversations.length);
+      exportModalStatus.className = "status";
+      if (conversations.length >= MAX_EXPORT_CONVERSATIONS) { conversations.length = MAX_EXPORT_CONVERSATIONS; limitReached = true; break; }
+      if (!r.data.hasMore || !r.data.nextCursor) break;
+      cursor = r.data.nextCursor;
+    }
+    if (!conversations.length) return exportModalError(t("noConvRange"));
+
+    exportModal.hidden = true;
+    const rangeLabel = allTime ? "all-time" : `${exportStart.value}-to-${exportEnd.value}`;
+    await exportConversations(conversations, rangeLabel, limitReached);
+  }
+
+  async function exportConversations(conversations, rangeLabel, limitReached) {
+    exportBtn.disabled = true;
+    let done = 0, failed = 0;
+    const progress = () => {
+      setStatus(t("exportingStatus", done, conversations.length, failed), false);
+      exportBtn.textContent = t("exportingBtn", done, conversations.length);
+    };
+    progress();
+
+    const results = await mapLimit(conversations, EXPORT_CONCURRENCY, async (summary) => {
+      const conv = await apiFetch({ view: "conversation", conversationId: summary.id });
+      let out;
+      if (!conv.ok) {
+        failed++;
+        out = { conversationId: summary.id, error: conv.error };
+      } else {
+        const turns = await mapLimit(conv.data.turns, 2, async (tu, i) => {
+          const r = await apiFetch(turnParams(summary.id, tu, i));
+          return r.ok ? r.data.turn : { requestId: tu.requestId, startedAt: tu.startedAt, error: r.error };
+        });
+        if (turns.some((tu) => tu.error && !tu.status)) failed++;
+        out = { ...summary, turns };
+      }
+      done++;
+      progress();
+      return out;
+    });
+
+    downloadJson(
+      { agent: selectedAgent.name, range: rangeLabel, exportedAt: new Date().toISOString(), conversations: results },
+      `${slugify(selectedAgent.name)}-conversations-${rangeLabel}.json`
+    );
+    exportBtn.disabled = false;
+    exportBtn.textContent = t("exportConversations");
+    const limitNote = limitReached ? t("exportCap", MAX_EXPORT_CONVERSATIONS) : "";
+    setStatus(t("exported", done - failed, conversations.length, failed) + limitNote, failed > 0 || limitReached);
+  }
+
+  function downloadJson(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function formatDate(s) {
+    // Upstream timestamps look like "2026-10-14 22:00:58.72+00" — make them ISO-parsable.
+    const d = new Date(String(s).replace(" ", "T").replace(/\+00$/, "Z"));
+    return isNaN(d) ? String(s) : d.toLocaleString(LOCALES[lang], { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function slugify(str) {
+    return String(str ?? "agent").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "agent";
+  }
+
+  // Some tool results (e.g. a full product catalogue) run to hundreds of KB;
+  // the export keeps them whole, the on-screen view shows the start.
+  const MAX_TOOL_RESULT_CHARS = 20000;
+  function clip(text) {
+    return text.length > MAX_TOOL_RESULT_CHARS
+      ? text.slice(0, MAX_TOOL_RESULT_CHARS) + "\n\n" + t("clipped", (text.length - MAX_TOOL_RESULT_CHARS).toLocaleString(LOCALES[lang]))
+      : text;
+  }
+
+  function prettyPrint(value) {
+    if (value === undefined || value === null) return t("none");
+    return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+</script>
+</body>
+</html>
